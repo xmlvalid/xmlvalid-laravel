@@ -7,6 +7,7 @@ namespace Xmlvalid\Laravel\Console;
 use Illuminate\Console\Command;
 use Xmlvalid\Client;
 use Xmlvalid\Document;
+use Xmlvalid\Exception\RulesVersionMismatchException;
 use Xmlvalid\Model\Validation;
 
 /** Validates files or URLs from the command line (deploys, CI, a scheduled check). */
@@ -17,6 +18,7 @@ final class ValidateCommand extends Command
         {--schema= : A catalog slug (peppol-bis-3-invoice), a saved schema (my-12) or "auto"}
         {--schema-file= : Your own XSD, RelaxNG or DTD file}
         {--rules= : Your own Schematron (.sch) file, run after the schema check}
+        {--rules-version=* : Pin a rule set release (peppol-bis-3-ubl@3.0.21); fails when it has moved on}
         {--doctype : Validate against the DTD the DOCTYPE names}
         {--warnings : List the warnings too}';
 
@@ -25,19 +27,36 @@ final class ValidateCommand extends Command
     public function handle(Client $client): int
     {
         $failed = 0;
+        $ruleSets = [];
+        $pins = $this->option('rules-version');
+        $pins = is_array($pins) ? array_values(array_filter($pins, fn(mixed $pin): bool => is_string($pin) && $pin !== '')) : [];
         foreach ($this->documents() as $path) {
-            $validation = $client->validate(
-                preg_match('#^https?://#i', $path) === 1 ? Document::url($path) : Document::file($path),
-                schema: $this->stringOption('schema'),
-                schemaFile: $this->stringOption('schema-file'),
-                doctype: (bool) $this->option('doctype'),
-                rules: $this->stringOption('rules'),
-            );
+            try {
+                $validation = $client->validate(
+                    preg_match('#^https?://#i', $path) === 1 ? Document::url($path) : Document::file($path),
+                    schema: $this->stringOption('schema'),
+                    schemaFile: $this->stringOption('schema-file'),
+                    doctype: (bool) $this->option('doctype'),
+                    rules: $this->stringOption('rules'),
+                    rulesVersion: $pins ?: null,
+                );
+            } catch (RulesVersionMismatchException $e) {
+                $this->error($e->getMessage());
+
+                return self::INVALID;
+            }
 
             if (! $validation->isValid()) {
                 $failed++;
             }
             $this->report($path, $validation);
+            foreach ($validation->ruleSets as $set) {
+                $ruleSets[$set->key] = (string) $set;
+            }
+        }
+
+        if ($ruleSets !== []) {
+            $this->line('<fg=gray>Rules: ' . implode(' · ', $ruleSets) . '</>');
         }
 
         return $failed === 0 ? self::SUCCESS : self::FAILURE;

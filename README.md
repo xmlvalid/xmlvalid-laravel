@@ -59,6 +59,7 @@ Options:
 ```php
 ValidXml::schema('xrechnung-3-ubl')
     ->withRules(resource_path('rules/our-rules.sch'))   // your own Schematron, after the schema check
+    ->rulesVersion('xrechnung-3-ubl@2.4.0')             // throw RulesVersionMismatchException when the rules move on
     ->errors(5)                                         // list up to 5 errors (1 by default)
     ->timeout(30);                                      // seconds to wait (config: xmlvalid.timeout)
 ```
@@ -148,7 +149,10 @@ php artisan xmlvalid:validate https://example.com/feed.xml --schema-file=resourc
 php artisan xmlvalid:schemas xrechnung
 ```
 
-`xmlvalid:validate` lists the errors and exits with 1 when a document is not valid.
+`xmlvalid:validate` lists the errors and exits with 1 when a document is not valid. It names the
+business rule releases used (`Rules: Peppol BIS Billing 3.0 rules 3.0.21`); pin them with
+`--rules-version=peppol-bis-3-ubl@3.0.21` (repeatable) to exit with 2 when one has moved on.
+`xmlvalid:schemas` lists each schema's rule sets as pins.
 
 ## Testing
 
@@ -174,6 +178,7 @@ Every exception extends `Xmlvalid\Exception\XmlvalidException`:
 | `AuthenticationException` | 401: no key, a revoked key |
 | `PlanLimitException` | 403: not in your plan |
 | `NotFoundException` | 404: no such validation, or it expired (24 hours) |
+| `RulesVersionMismatchException` | 409: a pinned rule set runs another release; `$ruleSet`, `$pinned`, `$current` |
 | `DocumentTooLargeException` | 413: over your plan's size limit |
 | `InvalidRequestException` | 422: unknown schema, a bad URL, … |
 | `QuotaExceededException` | 429: this month's validations are used up |

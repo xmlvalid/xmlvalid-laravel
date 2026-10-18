@@ -63,6 +63,7 @@ final class XmlvalidFake
             'document' => ['source' => 'upload', 'name' => 'document.xml', 'size' => 0],
             'schema' => null,
             'rules' => null,
+            'rule_sets' => [],
             'result' => [
                 'valid' => $valid,
                 'outcome' => $valid ? 'valid' : 'invalid',

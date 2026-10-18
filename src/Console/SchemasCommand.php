@@ -29,7 +29,7 @@ final class SchemasCommand extends Command
             $schema->schema,
             $schema->name . ($schema->version !== null ? " {$schema->version}" : ''),
             $schema->kind,
-            $schema->rules === [] ? '' : 'Schematron',
+            $schema->ruleSets !== [] ? implode(', ', array_map(fn($set) => $set->pin(), $schema->ruleSets)) : ($schema->rules === [] ? '' : 'Schematron'),
         ], $schemas));
 
         return self::SUCCESS;

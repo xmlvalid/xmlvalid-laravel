@@ -8,6 +8,7 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
+use Xmlvalid\Exception\RulesVersionMismatchException;
 use Xmlvalid\Laravel\Rules\ValidXml;
 use Xmlvalid\Laravel\Testing\XmlvalidFake;
 
@@ -91,6 +92,26 @@ final class ValidXmlTest extends TestCase
 
         Http::assertSent(fn(Request $request): bool => str_contains($request->body(), 'name="schema_file"')
             && str_contains($request->body(), 'name="rules_file"'));
+    }
+
+    public function test_rule_set_releases_can_be_pinned(): void
+    {
+        Http::fake(['xmlvalid.com/*' => Http::response(['error' => [
+            'code' => 'rules_version_mismatch',
+            'message' => 'Peppol BIS Billing 3.0 rules runs release 3.0.21 now, not 3.0.1. Review what changed and update the pin.',
+            'rule_set' => 'peppol-bis-3-ubl',
+            'pinned' => '3.0.1',
+            'current' => '3.0.21',
+        ]], 409)]);
+
+        try {
+            $this->messages(['invoice' => '<a/>'], ValidXml::schema('peppol-bis-3-invoice')->rulesVersion('peppol-bis-3-ubl@3.0.1'));
+            self::fail('Expected a rules version mismatch');
+        } catch (RulesVersionMismatchException $e) {
+            self::assertSame('3.0.21', $e->current);
+        }
+
+        Http::assertSent(fn(Request $request): bool => str_contains(urldecode($request->url()), 'rules_version[0]=peppol-bis-3-ubl@3.0.1'));
     }
 
     public function test_doctype(): void

@@ -32,6 +32,9 @@ final class ValidXml implements ValidationRule
     /** @var string|array<string, string>|null */
     private string|array|null $rules = null;
 
+    /** @var list<string> */
+    private array $rulesVersion = [];
+
     private bool $doctype = false;
 
     private ?float $timeout = null;
@@ -79,6 +82,19 @@ final class ValidXml implements ValidationRule
         return $this;
     }
 
+    /**
+     * Pins the schema's business rules to the releases they were checked
+     * against ("peppol-bis-3-ubl@3.0.21"): when one has moved on, a
+     * RulesVersionMismatchException is thrown instead of failing documents
+     * by rules that changed.
+     */
+    public function rulesVersion(string ...$pins): self
+    {
+        $this->rulesVersion = array_values($pins);
+
+        return $this;
+    }
+
     /** Seconds to wait for the result (the config's xmlvalid.timeout by default). */
     public function timeout(float $seconds): self
     {
@@ -118,6 +134,7 @@ final class ValidXml implements ValidationRule
             doctype: $this->doctype,
             rules: $this->rules,
             timeout: $this->timeout,
+            rulesVersion: $this->rulesVersion ?: null,
         );
 
         $result = $this->validation->result;
