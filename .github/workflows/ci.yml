@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { php: '8.2', laravel: '12.*', dependencies: lowest }
+          - { php: '8.2', laravel: '12.*', dependencies: highest }
+          - { php: '8.3', laravel: '13.*', dependencies: lowest }
+          - { php: '8.4', laravel: '12.*', dependencies: highest }
+          - { php: '8.4', laravel: '13.*', dependencies: highest }
+          - { php: '8.5', laravel: '13.*', dependencies: highest }
+    name: PHP ${{ matrix.php }}, Laravel ${{ matrix.laravel }} (${{ matrix.dependencies }})
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - run: composer require "illuminate/support:${{ matrix.laravel }}" --no-update --no-interaction
+      - uses: ramsey/composer-install@v3
+        with:
+          dependency-versions: ${{ matrix.dependencies }}
+      - run: composer test
+      - run: composer analyse
+        if: matrix.dependencies == 'highest'
+      - run: composer lint
+        if: matrix.php == '8.5'
