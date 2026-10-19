@@ -41,6 +41,17 @@ final class ClientTest extends TestCase
             && $request->body() === file_get_contents($this->fixture('invoice.xml')));
     }
 
+    public function test_the_fake_answers_in_the_api_shape(): void
+    {
+        Http::fake(['xmlvalid.com/*' => XmlvalidFake::invalid(['line' => 139, 'rule' => 'BR-CO-16', 'path' => '/Invoice/cac:LegalMonetaryTotal', 'message' => 'Amount due'], 'Second')]);
+
+        $validation = Xmlvalid::validate(Document::string('<Invoice/>'));
+
+        self::assertSame(['/Invoice/cac:LegalMonetaryTotal', null], array_map(fn($error) => $error->path, $validation->errors()));
+        self::assertNull($validation->result?->sha256);
+        self::assertNull($validation->result?->engine);
+    }
+
     public function test_multipart_keeps_its_boundary(): void
     {
         Http::fake(['xmlvalid.com/*' => XmlvalidFake::valid()]);

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0
+
+- `XmlvalidFake` answers as the API does now: `path` on each error (where a business rule fired),
+  `sha256` and `engine` on the result. Needs `xmlvalid/xmlvalid-php` 1.2, whose models read them.
+
 ## 1.1.0
 
 - `ValidXml::rulesVersion()` and `xmlvalid:validate --rules-version` pin business rule releases
